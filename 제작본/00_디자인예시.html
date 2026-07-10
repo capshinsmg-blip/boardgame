@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>달 아래 비밀 없는 정원 — 디자인 예시</title>
+<style>
+:root{
+  --bg:#f3efe6; --ink:#22222a; --muted:#6b6a72; --line:#d8d2c4; --card-shadow:0 10px 30px rgba(20,24,36,.18);
+  --night:#141824; --hanji:#e8e0d0; --moonblue:#a8c4d4; --blood:#8e2f3c; --dawn:#c9a86a;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#101319; --ink:#e6e2d8; --muted:#9a97a3; --line:#2a2f3d; --card-shadow:0 10px 30px rgba(0,0,0,.5); }
+}
+:root[data-theme="dark"]{ --bg:#101319; --ink:#e6e2d8; --muted:#9a97a3; --line:#2a2f3d; --card-shadow:0 10px 30px rgba(0,0,0,.5); }
+:root[data-theme="light"]{ --bg:#f3efe6; --ink:#22222a; --muted:#6b6a72; --line:#d8d2c4; --card-shadow:0 10px 30px rgba(20,24,36,.18); }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;margin:0;padding:48px 24px 80px;line-height:1.65}
+.wrap{max-width:1060px;margin:0 auto}
+h1,h2,.card-title,.moon-card h3{font-family:Batang,'Nanum Myeongjo','Noto Serif KR',serif}
+h1{font-size:34px;margin:0 0 6px;letter-spacing:.02em;text-wrap:balance}
+.sub{color:var(--muted);margin:0 0 48px;font-size:14px}
+h2{font-size:20px;margin:56px 0 6px;border-bottom:1px solid var(--line);padding-bottom:10px}
+.note{color:var(--muted);font-size:13px;margin:0 0 20px}
+.eyebrow{font-size:11px;letter-spacing:.22em;color:var(--blood);font-weight:700}
+
+/* 팔레트 */
+.swatches{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+.sw{width:150px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--bg)}
+.sw .chip{height:64px}
+.sw .meta{padding:8px 10px;font-size:12px}
+.sw .meta b{display:block;font-size:12.5px}
+.sw .meta span{color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* 페이즈 색 진행 */
+.phasebar{display:flex;border-radius:6px;overflow:hidden;height:34px;margin-top:14px;border:1px solid var(--line)}
+.phasebar div{flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;color:#e8e0d0;letter-spacing:.1em}
+
+/* 카드 공통 */
+.row{display:flex;gap:22px;flex-wrap:wrap;margin-top:20px}
+.card{width:210px;aspect-ratio:63/88;border-radius:10px;position:relative;overflow:hidden;box-shadow:var(--card-shadow);flex-shrink:0}
+.caption{width:210px;font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+.fig{display:flex;flex-direction:column}
+
+/* 페이즈 카드 - 밤하늘 */
+.night{background:linear-gradient(180deg,#0d1120 0%,#141824 55%,#1a2030 100%)}
+.moon{position:absolute;left:50%;top:34%;width:96px;height:96px;border-radius:50%;transform:translate(-50%,-50%)}
+.m1{background:radial-gradient(circle at 42% 40%,#f4efdf 0%,#ddd6c2 60%,#c9c3ae 100%);box-shadow:0 0 46px 14px rgba(232,224,208,.35)}
+.m4{background:radial-gradient(circle at 42% 40%,#e0c2b4 0%,#b96e6a 55%,#8e2f3c 100%);box-shadow:0 0 42px 12px rgba(142,47,60,.42)}
+.m5{top:74%;background:radial-gradient(circle at 45% 42%,#d9b98c 0%,#b78e5c 60%,#8e6a3c 100%);box-shadow:0 0 36px 10px rgba(201,168,106,.35);opacity:.9}
+.dawnsky{background:linear-gradient(180deg,#1a2030 0%,#2b3040 45%,#7a5f46 82%,#c9a86a 100%)}
+.cloud{position:absolute;width:150%;height:34px;left:-25%;border-radius:50%;filter:blur(9px);background:rgba(16,20,32,.78)}
+.c1{top:26%}.c2{top:37%;height:26px;opacity:.85}
+.redveil{position:absolute;inset:0;background:radial-gradient(circle at 50% 34%,transparent 18%,rgba(142,47,60,.16) 55%,rgba(20,24,36,.4) 100%)}
+.pond{position:absolute;bottom:0;left:0;right:0;height:26%;background:linear-gradient(180deg,rgba(168,196,212,.10),rgba(168,196,212,.22))}
+.pond i{position:absolute;left:50%;transform:translateX(-50%);border:1px solid rgba(232,224,208,.28);border-radius:50%}
+.pond i:nth-child(1){width:52px;height:9px;top:22%}
+.pond i:nth-child(2){width:84px;height:13px;top:44%;opacity:.6}
+.pond i:nth-child(3){width:120px;height:17px;top:68%;opacity:.35}
+.moon-card h3{position:absolute;bottom:9%;width:100%;text-align:center;color:#e8e0d0;font-size:15px;margin:0;letter-spacing:.3em}
+.pnum{position:absolute;top:10px;left:12px;color:rgba(232,224,208,.75);font-size:11px;letter-spacing:.18em}
+
+/* 페이즈 카드 뒷면 */
+.qback{background:#141824;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;border:1px solid #2a3044}
+.qback .ring{width:54px;height:54px;border-radius:50%;border:1px solid rgba(168,196,212,.5);display:flex;align-items:center;justify-content:center;color:#a8c4d4;font-family:Batang,serif;font-size:20px;margin-bottom:18px}
+.qback p{color:#e8e0d0;font-family:Batang,'Nanum Myeongjo',serif;font-size:15.5px;text-align:center;margin:0;line-height:1.8;text-wrap:balance}
+.qback .lbl{margin-top:16px;color:rgba(232,224,208,.5);font-size:10px;letter-spacing:.3em}
+
+/* 단서카드 */
+.clue{background:linear-gradient(160deg,#ece4d2,#e8e0d0 60%,#ddd3bd);padding:14px;display:flex;flex-direction:column;border:1px solid #cfc5ad}
+.clue .tag{font-size:10px;letter-spacing:.2em;color:#8e2f3c;font-weight:700}
+.card-title{font-size:15px;color:#22222a;margin:6px 0 10px;line-height:1.4}
+.photo{background:#141824;border:6px solid #f6f2e8;box-shadow:0 3px 8px rgba(20,24,36,.3);height:96px;position:relative;overflow:hidden}
+.photo .fig-sil{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:34px;height:62px;background:#060810;border-radius:16px 16px 0 0}
+.photo .knife{position:absolute;bottom:14px;left:58%;width:3px;height:16px;background:#a8c4d4;transform:rotate(12deg)}
+.photo .rec{position:absolute;top:6px;left:8px;color:#c0392b;font-size:9px;font-family:monospace}
+.photo .ts{position:absolute;bottom:4px;right:6px;color:#a8c4d4;font-size:8px;font-family:monospace}
+.clue .body{font-size:11px;color:#3a3830;line-height:1.6;margin-top:10px}
+.clue .back-hint{margin-top:auto;font-size:10px;color:#8e8672;letter-spacing:.12em}
+.memo{background:repeating-linear-gradient(180deg,#efe8d6 0px,#efe8d6 21px,#d9cfb6 22px);height:96px;padding:10px 12px;border:1px solid #cfc5ad;font-family:Batang,serif;color:#413d33;font-size:12px;line-height:22px}
+
+/* 연못의 진실 카드 */
+.truth{background:radial-gradient(circle at 50% 26%,#243048 0%,#141824 62%);display:flex;flex-direction:column;align-items:center;padding:20px;border:1px solid #2a3044}
+.truth .rip{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);border:1px solid rgba(168,196,212,.4);border-radius:50%}
+.truth .rip:nth-child(1){width:44px;height:16px}
+.truth .rip:nth-child(2){width:86px;height:30px;opacity:.6}
+.truth .rip:nth-child(3){width:130px;height:46px;opacity:.32}
+.truth h4{color:#a8c4d4;font-family:Batang,serif;font-size:16px;letter-spacing:.4em;margin:96px 0 10px}
+.truth p{color:rgba(232,224,208,.85);font-size:10.5px;line-height:1.8;text-align:center;margin:0}
+.truth .seal{margin-top:auto;color:rgba(232,224,208,.45);font-size:9.5px;letter-spacing:.2em}
+
+/* 미션 전환 카드 */
+.seal-card{background:#1c1420;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #3a2430}
+.seal-card .moon-red{width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 42% 40%,#c98e86 0%,#8e2f3c 70%);box-shadow:0 0 30px 8px rgba(142,47,60,.4)}
+.seal-card h4{color:#e8e0d0;font-family:Batang,serif;letter-spacing:.5em;margin:20px 0 4px;font-size:16px}
+.seal-card p{color:rgba(232,224,208,.55);font-size:10px;letter-spacing:.22em;margin:2px 0}
+.seal-card .band{position:absolute;bottom:0;left:0;right:0;height:34px;background:#8e2f3c;display:flex;align-items:center;justify-content:center;color:#e8e0d0;font-size:10px;letter-spacing:.3em}
+
+/* 토큰 & 보드 */
+.duo{display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start;margin-top:20px}
+.tokenfig svg{display:block}
+.board{width:460px;max-width:100%;aspect-ratio:4/3;background:#141824;border-radius:12px;position:relative;padding:14px;box-shadow:var(--card-shadow)}
+.slot{position:absolute;width:98px;height:54px;border:1px dashed rgba(232,224,208,.4);border-radius:6px;color:rgba(232,224,208,.75);font-size:10px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.4}
+.pondzone{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:190px;height:130px;border-radius:50%;background:radial-gradient(ellipse at 50% 40%,#2a3852 0%,#1a2438 70%);border:1px solid rgba(168,196,212,.35);display:flex;align-items:center;justify-content:center;color:#a8c4d4;font-size:11px;letter-spacing:.14em}
+.moonslots{position:absolute;left:50%;top:32%;transform:translateX(-50%);display:flex;gap:5px}
+.moonslots i{width:16px;height:16px;border-radius:50%;border:1px dashed rgba(232,224,208,.5)}
+table{border-collapse:collapse;font-size:13px;margin-top:14px;width:100%}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+th{font-size:12px;letter-spacing:.06em}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <p class="eyebrow">DESIGN REFERENCE · 디자이너 공유용</p>
+  <h1>&lt;달 아래 비밀 없는 정원&gt; 디자인 예시</h1>
+  <p class="sub">아트 디렉션 및 텍스트 원문은 <b>제작본/00_디자인가이드.docx</b> 참조. 아래 목업은 방향 제시용 — 화풍·디테일은 디자이너 재량.</p>
+
+  <h2>팔레트</h2>
+  <p class="note">페이즈가 진행될수록 은청 → 핏빛으로 물들고, 구원은 새벽 금색으로 끝난다. 이 색 서사를 모든 구성품에 일관 적용.</p>
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:#141824"></div><div class="meta"><b>먹 (밤)</b><span>#141824 · 배경 기조</span></div></div>
+    <div class="sw"><div class="chip" style="background:#e8e0d0"></div><div class="meta"><b>한지</b><span>#E8E0D0 · 문서/카드 바탕</span></div></div>
+    <div class="sw"><div class="chip" style="background:#a8c4d4"></div><div class="meta"><b>달빛 은청</b><span>#A8C4D4 · 1~2페이즈</span></div></div>
+    <div class="sw"><div class="chip" style="background:#8e2f3c"></div><div class="meta"><b>핏빛</b><span>#8E2F3C · 4~5페이즈·봉인</span></div></div>
+    <div class="sw"><div class="chip" style="background:#c9a86a"></div><div class="meta"><b>새벽 금</b><span>#C9A86A · 계시·굿엔딩</span></div></div>
+  </div>
+  <div class="phasebar">
+    <div style="background:#3a4a66">1페이즈</div>
+    <div style="background:#37415c">2페이즈</div>
+    <div style="background:#463c52">3페이즈</div>
+    <div style="background:#63333f">4페이즈</div>
+    <div style="background:linear-gradient(90deg,#8e2f3c,#c9a86a)">5페이즈 → 새벽</div>
+  </div>
+
+  <h2>페이즈 카드 (양면)</h2>
+  <p class="note">앞면: 달의 위상. 5장을 나란히 놓으면 하나의 밤하늘 파노라마가 되도록. 뒷면: 이번 장의 질문.</p>
+  <div class="row">
+    <div class="fig">
+      <div class="card night moon-card">
+        <span class="pnum">PHASE Ⅰ</span>
+        <div class="moon m1"></div>
+        <div class="pond"><i></i><i></i><i></i></div>
+        <h3>보름달</h3>
+      </div>
+      <p class="caption">1페이즈 앞면 — 둥근 보름달, 환한 빛. 수면 반사 포함.</p>
+    </div>
+    <div class="fig">
+      <div class="card night moon-card">
+        <span class="pnum">PHASE Ⅳ</span>
+        <div class="moon m4"></div>
+        <div class="cloud c1"></div><div class="cloud c2"></div>
+        <div class="redveil"></div>
+        <div class="pond"><i></i><i></i><i></i></div>
+        <h3>붉은 달</h3>
+      </div>
+      <p class="caption">4페이즈 앞면 — 붉은 그림자가 짙어진 달. 구름과 핏빛 베일.</p>
+    </div>
+    <div class="fig">
+      <div class="card dawnsky moon-card">
+        <span class="pnum">PHASE Ⅴ</span>
+        <div class="moon m5"></div>
+        <h3 style="color:#f3ead6">새벽</h3>
+      </div>
+      <p class="caption">5페이즈 앞면 — 핏빛 달이 지고 새벽이 옴. 금색 지평선.</p>
+    </div>
+    <div class="fig">
+      <div class="card qback">
+        <div class="ring">Ⅱ</div>
+        <p>"이안이는<br>왜 죽었는가?"</p>
+        <span class="lbl">이번 장의 질문</span>
+      </div>
+      <p class="caption">뒷면 공통 양식 — 페이즈 숫자 링 + 질문. 페이즈 시작 시 낭독.</p>
+    </div>
+  </div>
+
+  <h2>단서카드 (한지 바탕 · 3계열)</h2>
+  <p class="note">사진류 / 문서류 / 물건류 3계열로 앞면 연출 통일. 뒷면은 페이즈 번호 + 해당 페이즈 색의 달 문양.</p>
+  <div class="row">
+    <div class="fig">
+      <div class="card clue">
+        <span class="tag">3페이즈 · 사진</span>
+        <p class="card-title">신당 방범 카메라 캡처본</p>
+        <div class="photo">
+          <span class="rec">● REC</span>
+          <div class="fig-sil"></div><div class="knife"></div>
+          <span class="ts">1998-09-02 20:39</span>
+        </div>
+        <p class="body">비에 젖은 한송이가 신당 앞에 서 있는 모습. 재킷 밑으로 뾰족한 칼끝이 조금 튀어나와 있다.</p>
+        <span class="back-hint">뒷면: 구름 낀 달 · 회청</span>
+      </div>
+      <p class="caption">사진류 예시 — 98년대 필름/CCTV 질감, 낡은 인화지 프레임.</p>
+    </div>
+    <div class="fig">
+      <div class="card clue">
+        <span class="tag">3페이즈 · 문서</span>
+        <p class="card-title">해월의 수첩</p>
+        <div class="memo">9월 3일 아침,<br>사저 신당 방문.<br>부적 건 상의.</div>
+        <p class="body">사건 바로 다음 날 아침, 해월이 그 신당에 갈 예정이었다는 메모.</p>
+        <span class="back-hint">뒷면: 구름 낀 달 · 회청</span>
+      </div>
+      <p class="caption">문서류 예시 — 한지 괘선 + 손글씨(붓펜) 질감.</p>
+    </div>
+    <div class="fig">
+      <div class="card truth">
+        <i class="rip"></i><i class="rip"></i><i class="rip"></i>
+        <h4>한송이</h4>
+        <p>수면 위로 피에 젖은<br>두 손이 떠오른다.<br>부적의 정체를 알게 된 밤,<br>식칼을 품고 신당 문을<br>두드린 여인 —</p>
+        <span class="seal">연못 앞에 선 자만 열 수 있다</span>
+      </div>
+      <p class="caption">연못의 진실 카드 — 수면 파문 + 물속에서 떠오르는 글씨 연출.</p>
+    </div>
+    <div class="fig">
+      <div class="card seal-card">
+        <div class="moon-red"></div>
+        <h4>윤서린</h4>
+        <p>MISSION CARD</p>
+        <div class="band">4 페 이 즈 개 봉</div>
+      </div>
+      <p class="caption">미션 전환 카드 겉면 — 붉은 달 + 봉인 밴드. 밀랍/부적 봉인 연출 권장.</p>
+    </div>
+  </div>
+
+  <h2>달조각 토큰 &amp; 보드판 개념</h2>
+  <p class="note">달조각 5개는 보름달의 5분할 퍼즐 — 전원이 연못 앞에 서면 수면 위의 달이 완성된다 (히든 엔딩 조건의 시각화).</p>
+  <div class="duo">
+    <div class="tokenfig">
+      <svg width="180" height="180" viewBox="0 0 180 180">
+        <g stroke="#141824" stroke-width="3">
+          <circle cx="90" cy="90" r="70" fill="#e8e0d0"/>
+          <line x1="90" y1="90" x2="90" y2="20"/>
+          <line x1="90" y1="90" x2="156.6" y2="68.4"/>
+          <line x1="90" y1="90" x2="131.1" y2="146.6"/>
+          <line x1="90" y1="90" x2="48.9" y2="146.6"/>
+          <line x1="90" y1="90" x2="23.4" y2="68.4"/>
+        </g>
+        <circle cx="90" cy="90" r="70" fill="none" stroke="#c9a86a" stroke-width="2"/>
+      </svg>
+      <p class="caption" style="width:180px">자개/은박 재질감 제안. 낱개일 땐 초승달 조각.</p>
+    </div>
+    <div>
+      <div class="board">
+        <div class="slot" style="top:12px;left:14px">신당 마루</div>
+        <div class="slot" style="top:12px;left:50%;transform:translateX(-50%)">서린의 화실</div>
+        <div class="slot" style="top:12px;right:14px">송이의 집</div>
+        <div class="slot" style="bottom:12px;left:14px">지석의 집·차고</div>
+        <div class="slot" style="bottom:12px;left:50%;transform:translateX(-50%)">이안의 방</div>
+        <div class="slot" style="bottom:12px;right:14px">하늘의 방</div>
+        <div class="pondzone">연 못<br></div>
+        <div class="moonslots"><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <p class="caption" style="width:460px;max-width:100%">보드판 개념 — 중앙 연못(달조각 홈 5개 + 진실 카드 슬롯), 둘레에 단서 배치 장소 칸 6곳. 실제 아트는 수묵 조감도.</p>
+    </div>
+  </div>
+
+  <h2>서체 · 재질 방향</h2>
+  <table>
+    <tr><th>용도</th><th>방향</th></tr>
+    <tr><td>타이틀 · 카드 제목</td><td>붓글씨/명조 계열 (전통 무속 정서). 예: 나눔명조, 제주명조, 붓글씨 커스텀 레터링</td></tr>
+    <tr><td>본문 · 규칙</td><td>가독성 좋은 고딕 계열. 장문 카드가 많으므로 10.5pt 이상 확보</td></tr>
+    <tr><td>카드 뒷면 공통</td><td>페이즈 번호 + 달 문양 + 페이즈 색. 스포 방지를 위해 앞면 내용 유추 불가하게</td></tr>
+    <tr><td>금기</td><td>귀여운 SD 캐릭터화 · 일본풍 요괴 · 과도한 고어 (만 15세 등급)</td></tr>
+  </table>
+</div>
+</body>
+</html>
