@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>달 아래 비밀 없는 정원</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <!-- 참가 -->
+  <section id="s-join">
+    <h1>&lt;달 아래 비밀 없는 정원&gt;</h1>
+    <p class="sub">A Garden of Truth Under the Moon — 베타플레이</p>
+    <div class="card">
+      <h3>참가하기</h3>
+      <input type="text" id="nameInput" maxlength="12" placeholder="이름(닉네임)을 입력하세요">
+      <button class="primary" id="joinBtn">정원에 입장</button>
+    </div>
+  </section>
+
+  <!-- 로비: 인물 선택 -->
+  <section id="s-lobby" class="hidden">
+    <h1>인물 선택</h1>
+    <p class="sub">플레이할 인물을 선택하세요. 4인 플레이 시 강지석은 NPC가 됩니다.</p>
+    <div id="charButtons"></div>
+    <div class="card"><h3>입장한 플레이어</h3><ul class="players" id="lobbyPlayers"></ul></div>
+    <p class="dim center">진행자(호스트) 화면에서 게임을 시작합니다.</p>
+  </section>
+
+  <!-- 게임 본 화면 -->
+  <section id="s-game" class="hidden">
+    <div id="tab-main">
+      <div class="center" id="phaseHead"></div>
+      <div class="timer" id="timer"></div>
+      <div class="moons" id="moons"></div>
+      <div id="mainArea"></div>
+    </div>
+    <div id="tab-sheet" class="hidden"></div>
+    <div id="tab-clues" class="hidden"></div>
+    <div id="tab-record" class="hidden"></div>
+    <nav class="tabs">
+      <button data-tab="main" class="on">진행</button>
+      <button data-tab="sheet">내 설정서</button>
+      <button data-tab="clues">단서</button>
+      <button data-tab="record">기록</button>
+    </nav>
+  </section>
+</div>
+
+<div id="overlayRoot"></div>
+<div id="noticeRoot"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/player.js"></script>
+</body>
+</html>

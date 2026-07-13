@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>진행 화면 — 달 아래 비밀 없는 정원</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="host-wrap">
+  <h1>&lt;달 아래 비밀 없는 정원&gt; — 진행 화면</h1>
+  <p class="sub">이 화면은 테이블 중앙(PC/태블릿)에 두세요. 플레이어는 QR로 접속합니다.</p>
+  <div class="host-grid">
+    <div>
+      <div class="card qrbox" id="qrbox">
+        <h3>플레이어 접속 QR</h3>
+        <img id="qrimg" alt="QR">
+        <p id="joinUrl" class="dim"></p>
+        <p class="dim">* 플레이어 기기는 이 PC와 같은 와이파이여야 합니다.</p>
+      </div>
+      <div class="card">
+        <h3>플레이어</h3>
+        <ul class="players" id="playerList"></ul>
+      </div>
+      <div class="card" id="controlBox"></div>
+    </div>
+    <div>
+      <div class="card center">
+        <div class="phasemoon" id="hPhaseMoon"></div>
+        <div class="phaseq" id="hQuestion"></div>
+        <div class="timer" id="timer"></div>
+        <div class="moons" id="moons"></div>
+        <div id="hStatus" class="dim"></div>
+      </div>
+      <div class="card"><h3>진행 로그</h3><div class="loglist" id="logList"></div></div>
+      <div class="card"><h3>공개된 단서</h3><div id="hClues" class="loglist"></div></div>
+      <div class="card"><h3>추리 기록지</h3><div id="hRecords"></div></div>
+    </div>
+  </div>
+</div>
+<div id="overlayRoot"></div>
+<div id="noticeRoot"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/host.js"></script>
+</body>
+</html>

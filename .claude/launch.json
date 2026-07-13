@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "beta-app",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["beta-app/server.js"],
+      "port": 3000
+    }
+  ]
+}
