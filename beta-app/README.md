@@ -38,3 +38,11 @@ v2 원고의 모든 텍스트(설정서·단서 29장·연못의 진실·미션 
 - `server.js` — 상태머신·타이머·판정 (모든 규칙은 서버 권위)
 - `content.js` — v2 원고 전문. **원고 수정 시 이 파일만 갱신하면 된다**
 - `public/` — 플레이어(모바일)·호스트 화면
+
+## 온라인(클라우드) 버전
+와이파이·PC 없이 각자 모바일 데이터로 접속하는 정식 배포판:
+**https://moongarden.higgsfield.app**
+- 첫 화면에서 [새 게임 방 만들기] → 진행 화면의 QR/참가 코드를 공유
+- 진행 방식은 로컬판과 동일 (같은 게임 로직의 Cloudflare Durable Object 포팅)
+- 검증: node test/cloud-sim.js wss://moongarden.higgsfield.app (24개 체크)
+- 원고 수정 시 클라우드판 콘텐츠는 별도 저장소(moongarden)의 game-content.server.ts에 반영 필요
