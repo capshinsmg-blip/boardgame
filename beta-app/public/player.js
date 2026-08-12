@@ -131,13 +131,43 @@ function renderMain() {
   }
 
   if (S.stage === 'phase') {
-    // 단서 진행 상황
-    add(el(`<div class="card"><h3>단서 ${S.cluesRevealed} / ${S.totalClues}</h3>
-      <p class="dim">형사가 단서를 한 장씩 소리 내어 공개합니다.</p></div>`));
-    if (P && P.isDetective && S.cluesRevealed < S.totalClues) {
-      const b = el(`<button class="primary">다음 단서 공개 (${S.cluesRevealed + 1}/${S.totalClues})</button>`);
-      b.onclick = () => socket.emit('clue:reveal');
-      add(b);
+    // 단서 진행 상황 (hand 요약)
+    const myHand = (P && P.hand) || [];
+    const totalHidden = Object.values(S.handCounts || {}).reduce((a, b) => a + b, 0);
+    add(el(`<div class="card"><h3>단서 현황</h3>
+      <p class="dim">내가 쥔 단서 ${myHand.length}장 · 전체 미공개 ${totalHidden}장</p></div>`));
+    // 내 단서 (비공개 소지분)
+    if (myHand.length) {
+      const box = el(`<div class="card"><h3>내 단서 (비공개)</h3><p class="dim">공개는 자유입니다. 단, 형사의 취조를 받으면 무작위 1장이 강제로 공개됩니다.</p></div>`);
+      myHand.forEach((h) => {
+        const item = el(`<div class="clueitem"><b>${esc(h.title)}</b><p>${esc(h.body)}</p></div>`);
+        const b = el(`<button class="small">모두에게 공개</button>`);
+        b.onclick = () => { if (confirm(`"${h.title}" 단서를 모두에게 공개합니까?\n한 번 공개한 단서는 되돌릴 수 없습니다.`)) socket.emit('clue:show', { phase: h.phase, idx: h.idx }); };
+        item.appendChild(b);
+        box.appendChild(item);
+      });
+      add(box);
+    }
+    // 형사: 기억 조각 + 취조
+    if (P && P.isDetective) {
+      if (P.memories && P.memories.length) {
+        const mbox = el(`<div class="card" style="border-color:var(--dawn)"><h3 style="color:var(--dawn)">기억 조각 (형사 비공개)</h3><p class="dim">페이즈마다 한 조각씩 해금됩니다. 당신에게만 보입니다.</p></div>`);
+        P.memories.forEach((m) => mbox.appendChild(el(`<div class="clueitem mem"><b>${esc(m.title)} <small>· ${m.phase}페이즈</small></b><p>${esc(m.body)}</p></div>`)));
+        add(mbox);
+      }
+      const ibox = el(`<div class="card"><h3>취조</h3><p class="dim">페이즈마다 1회, 한 사람을 지목해 그가 숨긴 단서 중 무작위 1장을 강제로 공개시킵니다.</p></div>`);
+      if (P.canInterrogate) {
+        S.charList.forEach((c) => {
+          if (c.id === 'detective' || c.npc || !c.taken) return;
+          const cnt = (S.handCounts && S.handCounts[c.id]) || 0;
+          const b = el(`<button ${cnt ? '' : 'disabled'}>${esc(c.name)} — 숨긴 단서 ${cnt}장</button>`);
+          if (cnt) b.onclick = () => { if (confirm(`${c.name}을(를) 취조합니까?\n그가 숨긴 단서 중 1장이 무작위로 공개됩니다.`)) socket.emit('interrogate', c.id); };
+          ibox.appendChild(b);
+        });
+      } else {
+        ibox.appendChild(el(`<button disabled>이번 페이즈 취조 사용됨</button>`));
+      }
+      add(ibox);
     }
     // 연못
     if (S.pondOpen) {
@@ -191,7 +221,7 @@ function renderMain() {
   }
 
   if (S.stage === 'npcFinal') {
-    add(el(`<div class="card"><h3>강지석의 마지막 말</h3><p class="dim">진행자가 다음 단계로 넘어갑니다.</p></div>`));
+    add(el(`<div class="card"><h3>정해월의 마지막 말</h3><p class="dim">진행자가 다음 단계로 넘어갑니다.</p></div>`));
     return;
   }
 
@@ -260,19 +290,38 @@ function renderSheet() {
 
 function renderClues() {
   const T = $('tab-clues');
-  if (!S.clueLog.length && !S.npcLog.length) { T.innerHTML = '<p class="dim">아직 공개된 단서가 없습니다.</p>'; return; }
-  let html = '<h1>공개된 단서</h1><p class="sub">모든 단서는 공개 정보입니다.</p>';
+  const names = Object.fromEntries(S.charList.map((c) => [c.id, c.name]));
+  const byTag = (c) => c.forced ? `(${names[c.by]} 취조로 공개)` : c.by ? `(${names[c.by]} 공개)` : '(연못이 비춤)';
+  const myHand = (P && P.hand) || [];
+  let html = '';
+  // 내가 쥔 단서 (비공개 소지분)
+  if (myHand.length) {
+    html += '<h2>내가 쥔 단서 (비공개)</h2>' + myHand.map((h) =>
+      `<div class="clueitem"><b>${esc(h.title)}</b><p>${esc(h.body)}</p>
+        <button class="small showclue" data-phase="${h.phase}" data-idx="${h.idx}">모두에게 공개</button></div>`).join('');
+  }
+  // 형사 전용: 기억 조각
+  if (P && P.isDetective && P.memories && P.memories.length) {
+    html += '<h2 style="color:var(--dawn)">기억 조각 (형사 비공개)</h2>' + P.memories.map((m) =>
+      `<div class="clueitem mem"><b>${esc(m.title)} <small>· ${m.phase}페이즈</small></b><p>${esc(m.body)}</p></div>`).join('');
+  }
+  if (!S.clueLog.length && !S.npcLog.length && !html) { T.innerHTML = '<p class="dim">아직 공개된 단서가 없습니다.</p>'; return; }
+  html = '<h1>단서</h1><p class="sub">공개된 단서는 모두의 정보입니다.</p>' + html;
   for (let ph = 1; ph <= 5; ph++) {
     const clues = S.clueLog.filter((c) => c.phase === ph);
     if (!clues.length) continue;
     html += `<h2>${ph}페이즈</h2>` + clues.map((c) =>
-      `<div class="clueitem ${c.title.includes('기억 조각') ? 'mem' : ''}"><b>${esc(c.title)}</b><p>${esc(c.body)}</p></div>`).join('');
+      `<div class="clueitem"><b>${esc(c.title)}</b> <small>${esc(byTag(c))}</small><p>${esc(c.body)}</p></div>`).join('');
   }
-  if (S.npcLog.length) html += '<h2>NPC 강지석의 진술</h2>' + S.npcLog.map((c) => `<div class="clueitem"><b>${esc(c.title)}</b><p>${esc(c.body)}</p></div>`).join('');
+  if (S.npcLog.length) html += '<h2>NPC 정해월의 진술</h2>' + S.npcLog.map((c) => `<div class="clueitem"><b>${esc(c.title)}</b><p>${esc(c.body)}</p></div>`).join('');
   if (S.revelation) html += `<h2>연못의 계시</h2><div class="clueitem" style="border-color:var(--dawn)"><p>${esc(S.revelation)}</p></div>`;
   const stoodTruths = S.pondStood.map((x) => x.name).join(', ');
   if (stoodTruths) html += `<p class="dim">연못 앞에 선 사람: ${esc(stoodTruths)}</p>`;
   T.innerHTML = html;
+  T.querySelectorAll('.showclue').forEach((b) => {
+    const h = myHand.find((x) => x.phase === +b.dataset.phase && x.idx === +b.dataset.idx);
+    b.onclick = () => { if (h && confirm(`"${h.title}" 단서를 모두에게 공개합니까?\n한 번 공개한 단서는 되돌릴 수 없습니다.`)) socket.emit('clue:show', { phase: h.phase, idx: h.idx }); };
+  });
 }
 
 function renderRecord() {

@@ -27,11 +27,13 @@ function freshGame() {
     stage: 'lobby',            // lobby → opening → phase → wrapup → npcFinal → recon → speeches → vote → ending
     preset: 'standard',
     players: {},               // token → {token, name, charId, connected}
-    npcMode: false,            // 4인 플레이: 강지석 NPC
+    npcMode: false,            // 4인 플레이: 정해월 NPC
     phase: 0,                  // 1~5
     phaseEndsAt: null,
-    cluesRevealed: 0,          // 현재 페이즈에서 공개된 단서 수
-    clueLog: [],               // {phase, title, body}
+    hands: {},                 // charId → [{phase, idx}] 미공개 소지 단서 (게임 끝까지 이월)
+    memoriesUnlocked: 0,       // 형사에게 해금된 기억 조각 수 (= 현재 페이즈)
+    interrogateUsed: false,    // 이번 페이즈 취조 사용 여부
+    clueLog: [],               // {phase, title, body, by?, forced?}
     npcLog: [],                // 공개된 NPC 카드
     pondStood: [],             // charId[] (선 순서)
     pondOpen: false,
@@ -48,7 +50,7 @@ function freshGame() {
 let G = freshGame();
 let phaseTimer = null, wrapupTimer = null, speechTimer = null;
 
-const activeChars = () => C.CHAR_ORDER.filter((c) => !(G.npcMode && c === 'jiseok'));
+const activeChars = () => C.CHAR_ORDER.filter((c) => !(G.npcMode && c === 'haewol'));
 const playerByChar = (charId) => Object.values(G.players).find((p) => p.charId === charId);
 const now = () => Date.now();
 
@@ -66,12 +68,12 @@ function publicState() {
     phaseEndsAt: G.phaseEndsAt,
     serverNow: now(),
     players: Object.values(G.players).map((p) => ({ name: p.name, charId: p.charId, connected: p.connected })),
-    charList: C.CHAR_ORDER.map((id) => ({ id, name: C.CHARACTERS[id].name, label: C.CHARACTERS[id].label, publicIntro: C.CHARACTERS[id].publicIntro, taken: !!playerByChar(id), npc: G.npcMode && id === 'jiseok' })),
-    totalClues: G.phase >= 1 ? C.CLUES[G.phase].length : 0,
-    cluesRevealed: G.cluesRevealed,
+    charList: C.CHAR_ORDER.map((id) => ({ id, name: C.CHARACTERS[id].name, label: C.CHARACTERS[id].label, publicIntro: C.CHARACTERS[id].publicIntro, taken: !!playerByChar(id), npc: G.npcMode && id === 'haewol' })),
+    handCounts: Object.fromEntries(activeChars().map((c) => [c, (G.hands[c] || []).length])),
+    interrogateUsed: G.interrogateUsed,
     clueLog: G.clueLog,
     npcLog: G.npcLog,
-    pondStood: G.pondStood.map((c) => ({ charId: c, name: c === 'jiseok' && G.npcMode ? '강지석 (NPC)' : C.CHARACTERS[c].name })),
+    pondStood: G.pondStood.map((c) => ({ charId: c, name: c === 'haewol' && G.npcMode ? '정해월 (NPC)' : C.CHARACTERS[c].name })),
     pondOpen: G.pondOpen,
     moonTokens: G.pondStood.length,
     revelation: G.revelationShown ? C.REVELATION : null,
@@ -88,6 +90,13 @@ function publicState() {
 }
 function pushState() { io.emit('state', publicState()); }
 
+function detectiveMemories() {
+  const out = [];
+  for (let ph = 1; ph <= G.memoriesUnlocked; ph++)
+    for (const c of C.CLUES[ph]) if (c.memory) out.push({ phase: ph, title: c.title, body: c.body });
+  return out;
+}
+
 function privatePayload(p) {
   if (!p.charId) return null;
   const ch = C.CHARACTERS[p.charId];
@@ -98,6 +107,9 @@ function privatePayload(p) {
     canStandPond: canStand(p.charId),
     hasStood: G.pondStood.includes(p.charId),
     isDetective: p.charId === 'detective',
+    hand: (G.hands[p.charId] || []).map((h) => ({ phase: h.phase, idx: h.idx, title: C.CLUES[h.phase][h.idx].title, body: C.CLUES[h.phase][h.idx].body })),
+    memories: p.charId === 'detective' ? detectiveMemories() : null,
+    canInterrogate: p.charId === 'detective' && G.stage === 'phase' && !G.interrogateUsed,
   };
 }
 function pushPrivate() {
@@ -116,11 +128,16 @@ function canStand(charId) {
 }
 
 // ───────────────────────── 진행 로직 ─────────────────────────
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
 function startPhase(n) {
   clearTimeout(phaseTimer);
   G.stage = 'phase';
   G.phase = n;
-  G.cluesRevealed = 0;
+  G.interrogateUsed = false;
   G.wrapup = null;
   G.pondOpen = n >= 4;
   const mins = PRESETS[G.preset].phase[n - 1];
@@ -131,6 +148,22 @@ function startPhase(n) {
     const card = C.NPC_CARDS.find((c) => c.phase === n);
     if (card) { G.npcLog.push(card); io.emit('overlay', { kind: 'npc', title: card.title, body: card.body }); }
   }
+  // 비공개 단서 배분: 기억 조각을 제외한 단서를 셔플해 활성 플레이어에게 1장씩
+  const list = C.CLUES[n];
+  const regular = shuffle(list.map((c, i) => (c.memory ? -1 : i)).filter((i) => i >= 0));
+  for (const ch of activeChars()) {
+    if (!regular.length) break;
+    (G.hands[ch] = G.hands[ch] || []).push({ phase: n, idx: regular.shift() });
+  }
+  // 남은 단서는 연못이 즉시 비춘다 (전원 공개)
+  for (const idx of regular) {
+    const clue = list[idx];
+    G.clueLog.push({ phase: n, title: clue.title, body: clue.body });
+    io.emit('overlay', { kind: 'pond', title: `[연못이 비춘 단서] ${clue.title}`, body: clue.body });
+    log(`연못이 비춘 단서: ${clue.title}`);
+  }
+  G.memoriesUnlocked = n;   // 기억 조각은 형사 비공개 — clueLog에 넣지 않는다
+  io.emit('notice', '이번 장의 단서가 배분되었습니다. [내 단서]를 확인하세요.');
   if (n === 4) io.emit('notice', '미션 전환 카드가 도착했습니다. 내 화면의 [미션] 탭을 확인하세요.');
   sync();
 }
@@ -167,7 +200,7 @@ function afterRecord() {
     const card = C.NPC_CARDS.find((c) => c.phase === 'final');
     G.npcLog.push(card);
     io.emit('overlay', { kind: 'npc', title: card.title, body: card.body });
-    log('NPC 강지석 [카드 5] 공개');
+    log('NPC 정해월 [카드 5] 공개');
   } else {
     G.stage = 'recon';
     log('형사의 재구성 시작');
@@ -176,7 +209,7 @@ function afterRecord() {
 }
 
 function speechOrder() {
-  return C.SPEECH_ORDER.filter((c) => !(G.npcMode && c === 'jiseok'));
+  return C.SPEECH_ORDER.filter((c) => !(G.npcMode && c === 'haewol'));
 }
 
 function startSpeech(idx) {
@@ -216,17 +249,17 @@ function standPond(charId, isNpc) {
   if (!isNpc && !canStand(charId)) return false;
   if (G.pondStood.includes(charId)) return false;
   G.pondStood.push(charId);
-  const name = isNpc ? '강지석 (NPC)' : C.CHARACTERS[charId].name;
+  const name = isNpc ? '정해월 (NPC)' : C.CHARACTERS[charId].name;
   io.emit('overlay', { kind: 'pond', title: `${name} — 연못 앞에 서다`, body: C.POND_TRUTHS[charId] });
   log(`연못의 진실 공개: ${name} (달조각 ${G.pondStood.length}개)`);
-  // 4인: 두 번째 달조각 → NPC 지석도 연못 앞에 선다
-  if (G.npcMode && !G.pondStood.includes('jiseok') && G.pondStood.length === 2) {
-    setTimeout(() => { standPond('jiseok', true); sync(); }, 4000);
+  // 4인: 두 번째 달조각 → NPC 해월도 연못 앞에 선다 (즉시 — 클라이언트 오버레이 큐가 순차 연출)
+  if (G.npcMode && !G.pondStood.includes('haewol') && G.pondStood.length === 2) {
+    standPond('haewol', true);
   }
   // 세 번째 달조각 → 연못의 계시
-  if (G.pondStood.length === 3 && !G.revelationShown) {
+  if (G.pondStood.length >= 3 && !G.revelationShown) {
     G.revelationShown = true;
-    setTimeout(() => { io.emit('overlay', { kind: 'revelation', title: '[연못의 계시]', body: C.REVELATION }); sync(); }, 4500);
+    io.emit('overlay', { kind: 'revelation', title: '[연못의 계시]', body: C.REVELATION });
   }
   return true;
 }
@@ -268,12 +301,12 @@ io.on('connection', (socket) => {
     if (G.stage !== 'lobby') return;
     const seated = Object.values(G.players).filter((p) => p.charId);
     if (seated.length < 4) { socket.emit('errorMsg', '최소 4명이 인물을 선택해야 합니다.'); return; }
-    G.npcMode = !playerByChar('jiseok');
-    if (G.npcMode && seated.length !== 4) { socket.emit('errorMsg', '5인 플레이는 강지석까지 전원 선택해야 합니다.'); return; }
-    const need = C.CHAR_ORDER.filter((c) => !(G.npcMode && c === 'jiseok'));
+    G.npcMode = !playerByChar('haewol');
+    if (G.npcMode && seated.length !== 4) { socket.emit('errorMsg', '5인 플레이는 정해월까지 전원 선택해야 합니다.'); return; }
+    const need = C.CHAR_ORDER.filter((c) => !(G.npcMode && c === 'haewol'));
     if (!need.every((c) => playerByChar(c))) { socket.emit('errorMsg', '아직 선택되지 않은 인물이 있습니다.'); return; }
     G.stage = 'opening';
-    log(`게임 시작 (${G.npcMode ? '4인 + NPC 강지석' : '5인'}) — 오프닝: 각자 설정서를 숙지하고 자기소개를 하세요.`);
+    log(`게임 시작 (${G.npcMode ? '4인 + NPC 정해월' : '5인'}) — 오프닝: 각자 설정서를 숙지하고 자기소개를 하세요.`);
     sync();
   });
   socket.on('host:beginPhase1', () => { if (G.stage === 'opening') startPhase(1); });
@@ -288,20 +321,34 @@ io.on('connection', (socket) => {
     io.emit('reset'); sync();
   });
 
-  // 단서 공개 (형사 또는 호스트)
-  socket.on('clue:reveal', () => {
-    if (G.stage !== 'phase') return;
+  // 내 단서 공개 (소지자 본인의 자유 공개)
+  socket.on('clue:show', (d) => {
     const p = socket.data.token && G.players[socket.data.token];
-    const isDetective = p && p.charId === 'detective';
-    const isHost = !p; // 플레이어 등록 없는 소켓(호스트 화면)
-    if (!isDetective && !isHost) return;
-    const list = C.CLUES[G.phase];
-    if (G.cluesRevealed >= list.length) return;
-    const clue = list[G.cluesRevealed];
-    G.cluesRevealed += 1;
-    G.clueLog.push({ phase: G.phase, title: clue.title, body: clue.body });
-    io.emit('overlay', { kind: 'clue', title: `[단서 ${G.cluesRevealed}/${list.length}] ${clue.title}`, body: clue.body });
-    log(`단서 공개: ${clue.title}`);
+    if (!p || !p.charId || G.stage === 'lobby') return;
+    const hand = G.hands[p.charId] || [];
+    const i = hand.findIndex((h) => d && h.phase === d.phase && h.idx === d.idx);
+    if (i < 0) return;
+    const [h] = hand.splice(i, 1);
+    const clue = C.CLUES[h.phase][h.idx];
+    G.clueLog.push({ phase: h.phase, title: clue.title, body: clue.body, by: p.charId });
+    io.emit('overlay', { kind: 'clue', title: `[단서 공개 — ${C.CHARACTERS[p.charId].name}] ${clue.title}`, body: clue.body });
+    log(`단서 공개(${C.CHARACTERS[p.charId].name}): ${clue.title}`);
+    sync();
+  });
+
+  // 취조 (형사 전용, 페이즈당 1회)
+  socket.on('interrogate', (targetCharId) => {
+    const p = socket.data.token && G.players[socket.data.token];
+    if (!p || p.charId !== 'detective' || G.stage !== 'phase' || G.interrogateUsed) return;
+    if (targetCharId === 'detective' || !activeChars().includes(targetCharId)) return;
+    const hand = G.hands[targetCharId] || [];
+    if (!hand.length) { socket.emit('errorMsg', '그는 숨긴 단서가 없습니다.'); return; }
+    const [h] = hand.splice(Math.floor(Math.random() * hand.length), 1);
+    const clue = C.CLUES[h.phase][h.idx];
+    G.interrogateUsed = true;
+    G.clueLog.push({ phase: h.phase, title: clue.title, body: clue.body, by: targetCharId, forced: true });
+    io.emit('overlay', { kind: 'npc', title: `[취조] 형사가 ${C.CHARACTERS[targetCharId].name}을(를) 지목했다`, body: `${clue.title}: ${clue.body}` });
+    log(`취조: 형사 → ${C.CHARACTERS[targetCharId].name} — "${clue.title}" 강제 공개`);
     sync();
   });
 

@@ -41,9 +41,11 @@ setInterval(() => {
 function render() {
   if (!S) return;
   const names = Object.fromEntries(S.charList.map((c) => [c.id, c.name]));
-  // 플레이어 목록
-  $('playerList').innerHTML = S.players.map((p) =>
-    `<li>${esc(p.name)} ${p.charId ? '— <b>' + esc(names[p.charId]) + '</b>' : '<span class="dim">(선택 중)</span>'} ${p.connected ? '' : '<span class="off">● 연결 끊김</span>'}</li>`).join('') || '<li class="dim">아직 아무도 입장하지 않았습니다.</li>';
+  // 플레이어 목록 (손패 수 표시)
+  $('playerList').innerHTML = S.players.map((p) => {
+    const cnt = p.charId && S.handCounts && p.charId in S.handCounts ? ` <span class="dim">· 손패 ${S.handCounts[p.charId]}장</span>` : '';
+    return `<li>${esc(p.name)} ${p.charId ? '— <b>' + esc(names[p.charId]) + '</b>' + cnt : '<span class="dim">(선택 중)</span>'} ${p.connected ? '' : '<span class="off">● 연결 끊김</span>'}</li>`;
+  }).join('') || '<li class="dim">아직 아무도 입장하지 않았습니다.</li>';
 
   // 상단 상태
   $('hPhaseMoon').textContent = S.phase >= 1 && S.phaseInfo ? `${S.phase}페이즈 · ${S.phaseInfo.moon}` : ({ lobby: '로비', opening: '오프닝' }[S.stage] || '');
@@ -64,7 +66,7 @@ function render() {
   }
   if (S.stage === 'opening') btn('1페이즈 시작', 'host:beginPhase1', 'primary');
   if (S.stage === 'phase') {
-    btn('다음 단서 공개 (형사 대행)', 'clue:reveal');
+    CB.appendChild(el(`<p class="dim">단서는 플레이어에게 비공개 배분됩니다 · 취조 ${S.interrogateUsed ? '사용됨' : '미사용'}</p>`));
     btn('페이즈 조기 종료 — "달이 기울었습니다"', 'host:earlyEnd', 'primary');
   }
   if (S.stage === 'wrapup' && S.wrapup && !S.wrapup.revealed) btn('문답 강제 공개 (미제출자 침묵 처리)', 'host:forceWrapReveal');
@@ -78,7 +80,10 @@ function render() {
 
   // 로그/단서/기록
   $('logList').innerHTML = S.log.slice().reverse().map((l) => `<div>${new Date(l.t).toLocaleTimeString('ko-KR')} — ${esc(l.msg)}</div>`).join('');
-  $('hClues').innerHTML = S.clueLog.slice().reverse().map((c) => `<div><b>[${c.phase}P] ${esc(c.title)}</b></div>`).join('') || '<div class="dim">없음</div>';
+  $('hClues').innerHTML = S.clueLog.slice().reverse().map((c) => {
+    const tag = c.forced ? `${esc(names[c.by])} 취조로 공개` : c.by ? `${esc(names[c.by])} 공개` : '연못이 비춤';
+    return `<div><b>[${c.phase}P] ${esc(c.title)}</b> <span class="dim">(${tag})</span></div>`;
+  }).join('') || '<div class="dim">없음</div>';
   $('hRecords').innerHTML = S.records.map((r) => `<div class="answerline"><b>${r.phase}P</b><span>${esc(r.text)}</span></div>`).join('') || '<p class="dim">없음</p>';
 }
 
@@ -86,9 +91,12 @@ function statusLine() {
   switch (S.stage) {
     case 'lobby': return '플레이어 입장 및 인물 선택 대기 중';
     case 'opening': return '오프닝 — 설정서 숙지 및 자기소개';
-    case 'phase': return `단서 ${S.cluesRevealed}/${S.totalClues} 공개됨 · 달조각 ${S.moonTokens}개`;
+    case 'phase': {
+      const hidden = Object.values(S.handCounts || {}).reduce((a, b) => a + b, 0);
+      return `미공개 단서 ${hidden}장 · 취조 ${S.interrogateUsed ? '사용됨' : '미사용'} · 달조각 ${S.moonTokens}개`;
+    }
     case 'wrapup': return S.wrapup.revealed ? '한 줄 문답 공개 — 형사의 기록 대기' : `한 줄 문답 작성 중 (${S.wrapup.submitted.length}명 제출)`;
-    case 'npcFinal': return 'NPC 강지석의 마지막 말 공개됨';
+    case 'npcFinal': return 'NPC 정해월의 마지막 말 공개됨';
     case 'recon': return '형사의 재구성 — 기록지 낭독';
     case 'speeches': return '최후의 발언 진행 중';
     case 'vote': return `투표 진행 중 (${S.votesIn.length}명 완료)`;
